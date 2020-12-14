@@ -1,58 +1,47 @@
 # https://adventofcode.com/2020/day/14g
-import numpy as np
 
-lines = open("14.txt").read().split("\n")
+cmds = [line.split(" = ") for line in open("14.txt").read().split("\n")]
 
 
 # part 1: memory value decoder
 memory = {}
-pows = 2 ** np.arange(36, dtype=np.int64)[::-1]
 
 
-for line in lines:
-    if line.startswith("mask"):
-        mask = line.split(" = ")[1]
-        mask_idx = [i for i, v in enumerate(mask) if v != "X"]
-        mask_val = [int(v) for i, v in enumerate(mask) if v != "X"]
-        continue
+def apply_mask(c_val, c_mask):
+    return {"0": "0", "1": "1"}.get(c_mask, c_val)
 
-    addr, val = line.split(" = ")
-    addr = int(addr.strip("me[]"))
-    val = int(val)
-    b = np.fromiter([i for i in f"{val:036b}"], dtype=int)
-    b[mask_idx] = mask_val
-    memory[addr] = np.dot(b, pows)
+
+for cmd, val in cmds:
+    if cmd == "mask":
+        mask = val
+    else:
+        addr = int(cmd.strip("me[]"))
+        val = f"{int(val):036b}"
+        val = "".join(map(apply_mask, val, mask))
+        memory[addr] = int(val, 2)
 
 print(sum(memory.values()))
 
 
 # part 2: memory address decoder
-# implementation of floating logic from https://github.com/codertee/adventofcode/blob/main/adventofcode/solutions/y2020/d14_binary.py
+# template logic from https://github.com/codertee/adventofcode/blob/main/adventofcode/solutions/y2020/d14_binary.py
 memory = {}
 
-for line in lines:
-    if line.startswith("mask"):
-        mask = line.split(" = ")[1]
-        continue
 
-    addr, val = line.split(" = ")
-    addr = int(addr.strip("me[]"))
-    val = int(val)
+def apply_mask(c_val, c_mask):
+    return {"1": "1", "X": "{}"}.get(c_mask, c_val)
 
-    addr = f"{addr:036b}"
-    addr_template = ""
-    for mask_bit, addr_bit in zip(mask, addr):
-        if mask_bit == "0":
-            addr_template += addr_bit
-        elif mask_bit == "1":
-            addr_template += "1"
-        else:
-            addr_template += "{}"
 
-    floating_length = mask.count('X')
-    for f in range(2 ** floating_length):
-        addr = addr_template.format(*f"{f:0{floating_length}b}")
-        addr = int(addr, 2)
-        memory[addr] = val
+for cmd, val in cmds:
+    if cmd == "mask":
+        mask = val
+        n_float = mask.count("X")
+    else:
+        addr = int(cmd.strip("me[]"))
+        addr = f"{addr:036b}"
+        template = "".join(map(apply_mask, addr, mask))
+        for f in range(2 ** n_float):
+            addr = template.format(*f"{f:0{n_float}b}")
+            memory[int(addr, 2)] = int(val)
 
 print(sum(memory.values()))
